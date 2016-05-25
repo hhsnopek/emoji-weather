@@ -1,3 +1,6 @@
 {
-	"Name": "emoji weather"
+	"Name": "emoji weather",
+	"Maintainer": "Henry Snopek <hhsnopek@gmail.com>",
+	"ABotVersion": 0.2,
+	"Description": "Fetch weather reports"
 }

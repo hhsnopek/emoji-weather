@@ -9,6 +9,7 @@ import (
 	"time"
 
 	forecast "github.com/hhsnopek/emoji-weather/forecast"
+	"github.com/hhsnopek/emoji-weather/parser"
 	"github.com/itsabot/abot/shared/datatypes"
 	"github.com/itsabot/abot/shared/language"
 	"github.com/itsabot/abot/shared/nlp"
@@ -41,41 +42,34 @@ type weatherJSON struct {
 var p *dt.Plugin
 
 func init() {
-	trigger := &nlp.StructuredInput{
-		Commands: []string{"what", "show", "tell", "is", "will", "do"},
-		Objects: []string{"weather", "temperature", "temp", "outside",
-			"rain", "tomorrow"},
-	}
-
-	fns := &dt.PluginFns{Run: Run, FollowUp: FollowUp}
-	p, err := plugin.New(REPO, trigger, fns)
+	p, err := plugin.New(REPO)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	p.Vocab = dt.NewVocab(
-		dt.VocabHandler{
+	plugin.SetKeywords(p,
+		dt.KeywordHandler{
 			Fn: getWeather,
 			Trigger: &nlp.StructuredInput{
 				Commands: []string{"what", "show", "tell"},
 				Objects:  []string{"weather"},
 			},
 		},
-		dt.VocabHandler{
+		dt.KeywordHandler{
 			Fn: getTemp,
 			Trigger: &nlp.StructuredInput{
 				Commands: []string{"what", "show", "tell"},
 				Objects:  []string{"temperature", "temp"},
 			},
 		},
-		dt.VocabHandler{
+		dt.KeywordHandler{
 			Fn: getRain,
 			Trigger: &nlp.StructuredInput{
 				Commands: []string{"will", "do"},
 				Objects:  []string{"rain", "umbrella"},
 			},
 		},
-		dt.VocabHandler{
+		dt.KeywordHandler{
 			Fn: getSpecificPoint,
 			Trigger: &nlp.StructuredInput{
 				Commands: []string{"what", "is"},
@@ -85,14 +79,14 @@ func init() {
 			},
 		},
 	)
-}
 
-func Run(in *dt.Msg) (string, error) {
-	return FollowUp(in)
-}
-
-func FollowUp(in *dt.Msg) (string, error) {
-	return p.Vocab.HandleKeywords(in), nil
+	// plugins.setStates(p, [][]dt.State{dt.State{
+	// dt.State{
+	// }
+	// }})
+	if err = plugin.Register(p); err != nil {
+		p.Log.Fatal(err)
+	}
 }
 
 func getWeather(in *dt.Msg) (resp string) {
@@ -248,13 +242,6 @@ func getCity(in *dt.Msg) (*dt.City, error) {
 	}
 
 	return city, nil
-}
-
-func buildStateMachine(in *dt.Msg) *dt.StateMachine {
-	sm := dt.NewStateMachine(p)
-	sm.SetStates([]dt.State{})
-	sm.LoadState(in)
-	return sm
 }
 
 func er(err error) string {

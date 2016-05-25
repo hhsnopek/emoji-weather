@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"errors"
 	"github.com/itsabot/abot/shared/datatypes"
-	"github.com/itsabot/abot/shared/extract"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -18,29 +20,41 @@ type timeValues struct {
 	When     string // today, tomorrow, yesterday
 	Meridiem string // am, pm
 	Day      string // sunday, monday, tuesday, etc
-	Amount   int
-	Forward  bool   // [next, last]
-	Duration int    // week, weekend
-	When     string // week, weekend
+	Amount   int    // days to move ahead or back
+	Forward  int    // 1 (next), 0 (not set), -1 (last)
 	Hour     int
 	Minutes  int
 }
 
 func extractTime(in *dt.Msg) (time.Time, error) {
-	tv := parseTime(in)
-	time := &timeStruct{}
-
-	// construct time
-	now := time.Now()
-
-	if strings.EqualFold(tv.When, "today") {
-		time.Day = now.Day()
-	} else if strings.EqualFold(tv.When, "tomorrow") {
-		time.Day = now.Day() + 1
-	} else if strings.EqualFold(tv.When, "yesterday") {
-		time.Day = now.Day() - 1
+	tv, err := parseTime(in)
+	if err != nil {
+		return time.Now(), err
 	}
 
+	// construct time
+	date := time.Now()
+
+	/*
+	* Date
+	 */
+	// Day
+	if strings.EqualFold(tv.When, "today") {
+		// don't care
+	} else if strings.EqualFold(tv.When, "tomorrow") {
+		date.AddDate(0, 0, 1)
+	} else if strings.EqualFold(tv.When, "yesterday") {
+		date.AddDate(0, 0, -1)
+	}
+	// Month
+
+	// Year
+
+	/*
+	* Time
+	 */
+
+	return date, nil
 }
 
 func parseTime(in *dt.Msg) (*timeValues, error) {
@@ -72,20 +86,21 @@ func parseTime(in *dt.Msg) (*timeValues, error) {
 			tv.Day = "saturday"
 		} else if strings.EqualFold(word, "morning") {
 			tv.Hour = 8
-		} else if strings.EqualFold(word, "afternoon") || strings.EqualFold(word, "noon") {
+		} else if strings.EqualFold(word, "afternoon") ||
+			strings.EqualFold(word, "noon") {
 			tv.Hour = 12
 		} else if strings.EqualFold(word, "evening") {
-			tv.Hour == 18
+			tv.Hour = 18
 		} else if strings.EqualFold(word, "midnight") {
-			tv.Hour == 0
+			tv.Hour = 0
 		} else if strings.EqualFold(word, "week") {
 			tv.When = "week"
 		} else if strings.EqualFold(word, "weekend") {
 			tv.When = "weekend"
 		} else if strings.EqualFold(word, "next") {
-			tv.Forward = true
+			tv.Forward = 1
 		} else if strings.EqualFold(word, "last") {
-			tv.Forward = false
+			tv.Forward = -1
 		} else if strings.EqualFold(word, "fortnight") {
 			tv.Amount = 14
 		} else if strings.EqualFold(word, "score") {
@@ -93,11 +108,11 @@ func parseTime(in *dt.Msg) (*timeValues, error) {
 		} else if strings.Contains(word, ":") {
 			t := strings.Split(word, ":")
 
-			tv.Hour = t[0].(int)
+			tv.Hour, _ = strconv.Atoi(t[0])
 			if strings.Contains(t[1], "m") {
-				tv.Minutes = tv[1][:2].(int)
+				tv.Minutes, _ = strconv.Atoi(t[1][:2])
 
-				m := tv[1][2:]
+				m := t[1][2:]
 				if strings.EqualFold(m, "pm") {
 					if tv.Hour < 12 {
 						tv.Hour += 12
@@ -106,7 +121,7 @@ func parseTime(in *dt.Msg) (*timeValues, error) {
 					}
 				}
 			} else {
-				tv.Minutes = t[1].(int)
+				tv.Minutes, _ = strconv.Atoi(t[1])
 			}
 		} else if strings.EqualFold(word, "pm") {
 			if tv.Hour < 12 {
@@ -120,4 +135,6 @@ func parseTime(in *dt.Msg) (*timeValues, error) {
 
 		return tv, nil
 	}
+
+	return nil, errors.New("could not parse time")
 }
